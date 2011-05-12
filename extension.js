@@ -2,27 +2,27 @@
 const St = imports.gi.St;
 const Mainloop = imports.mainloop;
 
-const Gettext = imports.gettext.domain('gnome-shell');
-const _ = Gettext.gettext;
-
 const Main = imports.ui.main;
-
 const Search = imports.ui.search;
 const AppDisplay = imports.ui.appDisplay;
-
-function _showHello() {
-    let text = new St.Label({ style_class: 'helloworld-label', text: "Hello, world!" });
-    let monitor = global.get_primary_monitor();
-    global.stage.add_actor(text);
-    text.set_position(Math.floor (monitor.width / 2 - text.width / 2), Math.floor(monitor.height / 2 - text.height / 2));
-    Mainloop.timeout_add(3000, function () { text.destroy(); });
-}
+const GLib = imports.gi.GLib;
 
 // Put your extension initialization code here
 function main() {
-//    Main.panel.actor.reactive = true;
-//    Main.panel.actor.connect('button-release-event', _showHello);
-    Main.overview.viewSelector.addSearchProvider(new MigemoSearchProvider());
+
+    let migemo = new MigemoSearchProvider();
+
+    Main.overview.viewSelector.addSearchProvider(migemo);
+
+   Search.SearchSystem.prototype.updateSearch_orig = Search.SearchSystem.prototype.updateSearch;
+    Search.SearchSystem.prototype.updateSearch = function(searchString){
+	let results = this.updateSearch_orig(searchString);
+	let res = migemo.getResultSet(searchString);
+	if(res.length > 0){
+	    results.push([migemo, res]);
+	}
+	return results;
+    }
 }
 
 function MigemoSearchProvider() {
@@ -33,15 +33,32 @@ MigemoSearchProvider.prototype = {
     __proto__: AppDisplay.BaseAppSearchProvider.prototype,
 
     _init: function() {
-         AppDisplay.BaseAppSearchProvider.prototype._init.call(this, _("APPLICATIONS"));
+        AppDisplay.BaseAppSearchProvider.prototype._init.call(this, "migemo");
     },
 
     getInitialResultSet: function(terms) {
-        return this._appSys.initial_search(false, terms);
+	// dummy
+	return [];
     },
 
     getSubsearchResultSet: function(previousResults, terms) {
-        return this._appSys.subsearch(false, previousResults, terms);
+	// dummy
+	return [];
+    },
+
+    getResultSet: function(terms) {
+	if(terms.length < 3) { return []; }
+
+	let migemo_ret = GLib.spawn_command_line_sync('/bin/sh -c "migemo-client ' + terms + ' |nkf -w8"');
+	global.logError(migemo_ret);
+	if(!migemo_ret[0]){ return []; }
+
+	let searchString = migemo_ret[1].replace(/(\n|\r)+$/, '');
+	let regexp = new RegExp(searchString);
+	let apps = this._appSys.get_flattened_apps(); // get all apps
+	return apps.filter(function(app){
+			       return -1 < app.get_name().search(regexp);
+			   }).map(function(app){ return app.get_id();});
     },
 
     createResultActor: function (resultMeta, terms) {
