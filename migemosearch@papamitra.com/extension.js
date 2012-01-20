@@ -8,11 +8,11 @@ const Shell = imports.gi.Shell;
 
 // for Ruby/Migemo
 const MIGEMO_COMMAND_LINE = 'migemo -d /usr/share/migemo/migemo-dict';
-const MIGEMO_CHARSET = 'euc-jp';
+const MIGEMO_CHARSET = 'auto';
 
 // for C/Migemo
 // const MIGEMO_COMMAND_LINE = 'cmigemo -q -n -d /usr/share/cmigemo/utf-8/migemo-dict';
-// const MIGEMO_CHARSET = 'utf-8';
+// const MIGEMO_CHARSET = 'auto';
 
 const MIGEMO_MIN_LENGTH = 2;
 
@@ -144,9 +144,21 @@ function Migemo(commandLine, charset) {
     this._init(commandLine, charset);
 }
 
+Migemo.guessCharset = function(commandLine) {
+    var [res, stdout] = GLib.spawn_command_line_sync(
+        '/bin/sh -c ' + GLib.shell_quote('echo aiueo |' + commandLine + '| nkf -g'));
+    if (!res) {
+        throw 'Failed to guess charset';
+    }
+    return String(stdout).replace(/(\n|\r)+$/, '');
+}
+
 Migemo.prototype = {
     _init: function(commandLine, charset) {
-        let [_, argv] = GLib.shell_parse_argv(commandLine);
+        if (charset == 'auto') {
+            charset = Migemo.guessCharset(commandLine);
+        }
+        let [, argv] = GLib.shell_parse_argv(commandLine);
         let [res, pid, stdinFd, stdoutFd, stderrFd]  = GLib.spawn_async_with_pipes(
             null, argv, null, GLib.SpawnFlags.SEARCH_PATH, null);
         if (!res) {
