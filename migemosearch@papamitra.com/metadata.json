@@ -1,1 +1,6 @@
-{"shell-version": ["3.0"], "uuid": "migemosearch@papamitra.com", "name": "Migemo Search", "description": "Search Application by Migemo"}
+{
+  "shell-version": ["3.0", "3.2"],
+  "uuid": "migemosearch@papamitra.com",
+  "name": "Migemo Search",
+  "description": "Search Application by Migemo"
+}
