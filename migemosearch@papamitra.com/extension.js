@@ -33,7 +33,7 @@ MigemoSearchProvider.prototype = {
         this._appSearch = new AppDisplay.AppSearchProvider();
 
         let self = this;
-        ['getResultMeta', 'activateResult', 'dragActivateResult', 'createResultActor',].forEach(function(x) {
+        ['getResultMeta', 'getResultMetas', 'activateResult', 'dragActivateResult', 'createResultActor',].forEach(function(x) {
             self[x] = function() {
                 return self._appSearch[x].apply(self._appSearch, arguments);
             };
